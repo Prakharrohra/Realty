@@ -1,139 +1,115 @@
-import { useContext, useEffect, useRef, useState } from "react";
-import "./chat.scss";
-import { AuthContext } from "../../context/AuthContext";
-import apiRequest from "../../lib/apiRequest";
-import { format } from "timeago.js";
-import { SocketContext } from "../../context/SocketContext";
-import { useNotificationStore } from "../../lib/notificationStore";
+import { useState } from "react";
+import "./filter.scss";
+import { useSearchParams } from "react-router-dom";
 
-function Chat({ chats }) {
-  const [chat, setChat] = useState(null);
-  const { currentUser } = useContext(AuthContext);
-  const { socket } = useContext(SocketContext);
+function Filter() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [query, setQuery] = useState({
+    type: searchParams.get("type") || "",
+    city: searchParams.get("city") || "",
+    property: searchParams.get("property") || "",
+    minPrice: searchParams.get("minPrice") || "",
+    maxPrice: searchParams.get("maxPrice") || "",
+    bedroom: searchParams.get("bedroom") || "",
+  });
 
-  const messageEndRef = useRef();
-
-  const decrease = useNotificationStore((state) => state.decrease);
-
-  useEffect(() => {
-    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chat]);
-
-  const handleOpenChat = async (id, receiver) => {
-    try {
-      const res = await apiRequest("/chats/" + id);
-      if (!res.data.seenBy.includes(currentUser.id)) {
-        decrease();
-      }
-      setChat({ ...res.data, receiver });
-    } catch (err) {
-      console.log(err);
-    }
+  const handleChange = (e) => {
+    setQuery({
+      ...query,
+      [e.target.name]: e.target.value,
+    });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    const formData = new FormData(e.target);
-    const text = formData.get("text");
-
-    if (!text) return;
-    try {
-      const res = await apiRequest.post("/messages/" + chat.id, { text });
-      setChat((prev) => ({ ...prev, messages: [...prev.messages, res.data] }));
-      e.target.reset();
-      socket.emit("sendMessage", {
-        receiverId: chat.receiver.id,
-        data: res.data,
-      });
-    } catch (err) {
-      console.log(err);
-    }
+  const handleFilter = () => {
+    setSearchParams(query);
   };
-
-  useEffect(() => {
-    const read = async () => {
-      try {
-        await apiRequest.put("/chats/read/" + chat.id);
-      } catch (err) {
-        console.log(err);
-      }
-    };
-
-    if (chat && socket) {
-      socket.on("getMessage", (data) => {
-        if (chat.id === data.chatId) {
-          setChat((prev) => ({ ...prev, messages: [...prev.messages, data] }));
-          read();
-        }
-      });
-    }
-    return () => {
-      socket.off("getMessage");
-    };
-  }, [socket, chat]);
 
   return (
-    <div className="chat">
-      <div className="messages">
-        <h1>Messages</h1>
-        {chats?.map((c) => (
-          <div
-            className="message"
-            key={c.id}
-            style={{
-              backgroundColor:
-                c.seenBy.includes(currentUser.id) || chat?.id === c.id
-                  ? "white"
-                  : "#fecd514e",
-            }}
-            onClick={() => handleOpenChat(c.id, c.receiver)}
-          >
-            <img src={c.receiver.avatar || "/noavatar.jpg"} alt="" />
-            <span>{c.receiver.username}</span>
-            <p>{c.lastMessage}</p>
-          </div>
-        ))}
-      </div>
-      {chat && (
-        <div className="chatBox">
-          <div className="top">
-            <div className="user">
-              <img src={chat.receiver.avatar || "noavatar.jpg"} alt="" />
-              {chat.receiver.username}
-            </div>
-            <span className="close" onClick={() => setChat(null)}>
-              X
-            </span>
-          </div>
-          <div className="center">
-            {chat.messages.map((message) => (
-              <div
-                className="chatMessage"
-                style={{
-                  alignSelf:
-                    message.userId === currentUser.id
-                      ? "flex-end"
-                      : "flex-start",
-                  textAlign:
-                    message.userId === currentUser.id ? "right" : "left",
-                }}
-                key={message.id}
-              >
-                <p>{message.text}</p>
-                <span>{format(message.createdAt)}</span>
-              </div>
-            ))}
-            <div ref={messageEndRef}></div>
-          </div>
-          <form onSubmit={handleSubmit} className="bottom">
-            <textarea name="text"></textarea>
-            <button>Send</button>
-          </form>
+    <div className="filter">
+      <h1>
+        Search results for <b>{searchParams.get("city")}</b>
+      </h1>
+      <div className="top">
+        <div className="item">
+          <label htmlFor="city">Location</label>
+          <input
+            type="text"
+            id="city"
+            name="city"
+            placeholder="City Location"
+            onChange={handleChange}
+            defaultValue={query.city}
+          />
         </div>
-      )}
+      </div>
+      <div className="bottom">
+        <div className="item">
+          <label htmlFor="type">Type</label>
+          <select
+            name="type"
+            id="type"
+            onChange={handleChange}
+            defaultValue={query.type}
+          >
+            <option value="">any</option>
+            <option value="buy">Buy</option>
+            <option value="rent">Rent</option>
+          </select>
+        </div>
+        <div className="item">
+          <label htmlFor="property">Property</label>
+          <select
+            name="property"
+            id="property"
+            onChange={handleChange}
+            defaultValue={query.property}
+          >
+            <option value="">any</option>
+            <option value="apartment">Apartment</option>
+            <option value="house">House</option>
+            <option value="condo">Condo</option>
+            <option value="land">Land</option>
+          </select>
+        </div>
+        <div className="item">
+          <label htmlFor="minPrice">Min Price</label>
+          <input
+            type="number"
+            id="minPrice"
+            name="minPrice"
+            placeholder="any"
+            onChange={handleChange}
+            defaultValue={query.minPrice}
+          />
+        </div>
+        <div className="item">
+          <label htmlFor="maxPrice">Max Price</label>
+          <input
+            type="text"
+            id="maxPrice"
+            name="maxPrice"
+            placeholder="any"
+            onChange={handleChange}
+            defaultValue={query.maxPrice}
+          />
+        </div>
+        <div className="item">
+          <label htmlFor="bedroom">Bedroom</label>
+          <input
+            type="text"
+            id="bedroom"
+            name="bedroom"
+            placeholder="any"
+            onChange={handleChange}
+            defaultValue={query.bedroom}
+          />
+        </div>
+        <button onClick={handleFilter}>
+          <img src="/search.png" alt="" />
+        </button>
+      </div>
     </div>
   );
 }
 
-export default Chat;
+export default Filter;
