@@ -7,11 +7,29 @@ import testRoute from "./routes/test.route.js";
 import userRoute from "./routes/user.route.js";
 import chatRoute from "./routes/chat.route.js";
 import messageRoute from "./routes/message.route.js";
+import bodyParser from "body-parser";
 
 const app = express();
 
-app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use(express.json());
+const corsOptions = {
+  origin: 'http://localhost:5173',
+  credentials: true, // Allow credentials
+  optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
+
+// app.use((req, res, next) => {
+//   res.setHeader('Access-Control-Allow-Origin', '*')
+//   res.header(
+//     'Access-Control-Allow-Headers',
+//     'Origin, X-Requested-With, Content-Type, Accept'
+//   )
+//   next()
+// });
+//cross site scripting overcome
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ limit: "10kb", extended: true }));
 app.use(cookieParser());
 
 app.use("/api/auth", authRoute);

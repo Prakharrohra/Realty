@@ -26,7 +26,7 @@ function Register() {
         email,
         password,
       });
-
+      console.log(username,email,password);
       navigate("/login");
     } catch (err) {
       setError(err.response.data.message);
